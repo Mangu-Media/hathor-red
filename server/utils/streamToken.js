@@ -7,6 +7,18 @@ function toPositiveInt(value) {
   return n;
 }
 
+/**
+ * Finite non-negative integer (allow 0). Rejects NaN, negative, non-integer,
+ * Infinity. Same family as toPositiveInt; used for Range start/end, positions,
+ * elapsed_ms, counts.
+ * dose-1.75: live in streamToken so stream/sync do not import commerceService.
+ */
+function toNonNegInt(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0) return null;
+  return n;
+}
+
 function signStreamToken({ userId, songId, username }) {
   if (!process.env.JWT_SECRET) {
     throw new Error('JWT_SECRET environment variable is not set');
@@ -54,4 +66,4 @@ function verifyStreamToken(token) {
   return decoded;
 }
 
-module.exports = { signStreamToken, verifyStreamToken, toPositiveInt };
+module.exports = { signStreamToken, verifyStreamToken, toPositiveInt, toNonNegInt };

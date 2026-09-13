@@ -3,8 +3,7 @@ const fsp = require('fs/promises');
 const mime = require('mime-types');
 const db = require('../config/database');
 const { redisClient } = require('../config/redis');
-const { signStreamToken, toPositiveInt } = require('../utils/streamToken');
-const { toNonNegInt } = require('../services/commerce/commerceService');
+const { signStreamToken, toPositiveInt, toNonNegInt } = require('../utils/streamToken');
 const { logger } = require('../utils/logger');
 const {
   DEFAULT_PAGE_LIMIT,
@@ -42,8 +41,8 @@ function parsePageLimit(raw) {
  */
 function parsePageOffset(raw) {
   if (raw == null || raw === '') return 0;
-  const n = Number(raw);
-  if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0) return null;
+  const n = toNonNegInt(raw);
+  if (n == null) return null;
   return n;
 }
 

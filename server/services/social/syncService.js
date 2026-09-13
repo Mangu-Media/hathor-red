@@ -17,9 +17,10 @@
  *
  * dose-1.65: current_position / elapsed_ms use shared toNonNegInt (reject
  * NaN/negative/non-integer) instead of raw parseInt coercion.
+ * dose-1.75: import toNonNegInt from streamToken (no commerce dependency).
  */
 
-const { toNonNegInt } = require('../commerce/commerceService');
+const { toNonNegInt } = require('../../utils/streamToken');
 
 /**
  * Estimated playback position of a room in milliseconds at `nowMs`.
