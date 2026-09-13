@@ -30,6 +30,18 @@ function toPositiveId(value) {
   return n;
 }
 
+/**
+ * dose-1.78: non-negative integer duration (seconds) matching server
+ * recordListening bar (0..7200). Reject NaN/negative/non-integer/out-of-range
+ * before POST so we never send junk the controller would 400.
+ */
+function toListeningDuration(value) {
+  if (value == null || value === '') return 0;
+  const n = Number(value);
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0 || n > 7200) return null;
+  return n;
+}
+
 export const musicService = {
   getSongs: (params) => api.get('/songs', { params }).then(r => r.data),
   getMySongs: (params) => api.get('/songs/mine', { params }).then(r => r.data),
@@ -58,7 +70,9 @@ export const musicService = {
   recordListening: (songId, duration) => {
     const sid = toPositiveId(songId);
     if (sid == null) return Promise.reject(new Error('Invalid song id'));
-    return api.post('/songs/record-listening', { songId: sid, duration }).then(r => r.data);
+    const dur = toListeningDuration(duration);
+    if (dur == null) return Promise.reject(new Error('Invalid duration'));
+    return api.post('/songs/record-listening', { songId: sid, duration: dur }).then(r => r.data);
   },
 
   getPlaylists: () => api.get('/playlists').then(r => r.data),
