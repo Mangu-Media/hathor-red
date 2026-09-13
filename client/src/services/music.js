@@ -18,22 +18,39 @@ function resolveStreamUrl(url) {
   }
 }
 
+/**
+ * dose-1.76: client-side positive integer id guard (same bar as server
+ * toPositiveInt). Reject NaN/0/negative/non-integer before hitting /songs/:id
+ * or stream-url so we never mint a request the server would 400/401.
+ */
+function toPositiveId(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n <= 0) return null;
+  return n;
+}
+
 export const musicService = {
   getSongs: (params) => api.get('/songs', { params }).then(r => r.data),
   getMySongs: (params) => api.get('/songs/mine', { params }).then(r => r.data),
   // Controller returns { song }; unwrap so callers (hydrate, detail) get the row.
-  getSong: (id) =>
-    api.get(`/songs/${id}`).then((r) => {
+  getSong: (id) => {
+    const sid = toPositiveId(id);
+    if (sid == null) return Promise.reject(new Error('Invalid song id'));
+    return api.get(`/songs/${sid}`).then((r) => {
       const data = r.data;
       if (data && data.song && typeof data.song === 'object') return data.song;
       return data;
-    }),
+    });
+  },
   getGenres: () => api.get('/songs/genres').then(r => r.data),
-  getStreamUrl: (id) =>
-    api.get(`/songs/${id}/stream-url`).then((r) => {
+  getStreamUrl: (id) => {
+    const sid = toPositiveId(id);
+    if (sid == null) return Promise.reject(new Error('Invalid song id'));
+    return api.get(`/songs/${sid}/stream-url`).then((r) => {
       const data = r.data || {};
       return { ...data, url: resolveStreamUrl(data.url) };
-    }),
+    });
+  },
   uploadSong: (formData) => api.post('/songs/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }).then(r => r.data),
