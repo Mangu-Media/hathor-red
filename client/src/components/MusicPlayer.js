@@ -142,9 +142,10 @@ const MusicPlayer = () => {
     const rows = Array.from(list.querySelectorAll('.player-queue-row'));
     const rowIdx = rows.indexOf(row);
     if (rowIdx < 0) return;
+    // dose-1.74: Number + isInteger instead of raw parseInt (reject NaN)
     const dataIdx = row.getAttribute('data-queue-index');
-    const parsed = dataIdx != null ? parseInt(dataIdx, 10) : NaN;
-    if (Number.isInteger(parsed)) {
+    const parsed = dataIdx != null ? Number(dataIdx) : NaN;
+    if (Number.isInteger(parsed) && parsed >= 0) {
       touchOverRef.current = parsed;
       setDragOver(parsed);
     }

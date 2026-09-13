@@ -5,6 +5,16 @@ import { useAuth } from '../contexts/AuthContext';
 
 const ROOMS_POLL_MS = 15000;
 
+/**
+ * dose-1.74: positive int for max listeners (reject NaN/0/negative/non-integer).
+ * Clamp to form min/max 2–100; fall back to 50.
+ */
+function toPositiveMaxListeners(value, fallback = 50) {
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 1) return fallback;
+  return Math.min(100, Math.max(2, n));
+}
+
 const Rooms = () => {
   const [rooms, setRooms] = useState([]);
   const [loadError, setLoadError] = useState(null);
@@ -75,7 +85,7 @@ const Rooms = () => {
         <div className="create-room-form">
           <input type="text" placeholder="Room name" value={newRoomName} onChange={e => setNewRoomName(e.target.value)} />
           <label><input type="checkbox" checked={newRoomPublic} onChange={e => setNewRoomPublic(e.target.checked)} /> Public room</label>
-          <input type="number" min="2" max="100" value={newRoomMaxListeners} onChange={e => setNewRoomMaxListeners(parseInt(e.target.value) || 50)} placeholder="Max listeners" />
+          <input type="number" min="2" max="100" value={newRoomMaxListeners} onChange={e => setNewRoomMaxListeners(toPositiveMaxListeners(e.target.value, 50))} placeholder="Max listeners" />
           <div className="create-room-actions">
             <button className="btn-primary" onClick={handleCreate}>Create</button>
             <button className="btn-secondary" onClick={() => setShowCreate(false)}>Cancel</button>

@@ -4,6 +4,15 @@ import { getAIStatus } from '../services/ai';
 import { usePlayer } from '../contexts/PlayerContext';
 import './AIPlaylistGenerator.css';
 
+/**
+ * dose-1.74: positive int for song count from select (reject NaN/0/negative).
+ */
+function toPositiveSongCount(value, fallback = 10) {
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 1) return fallback;
+  return n;
+}
+
 const AIPlaylistGenerator = () => {
   const [prompt, setPrompt] = useState('');
   const [name, setName] = useState('');
@@ -93,7 +102,7 @@ const AIPlaylistGenerator = () => {
             onChange={e => setName(e.target.value)}
             className="ai-name-input"
           />
-          <select value={songCount} onChange={e => setSongCount(parseInt(e.target.value))} className="ai-count-select">
+          <select value={songCount} onChange={e => setSongCount(toPositiveSongCount(e.target.value, 10))} className="ai-count-select">
             {[5, 10, 15, 20, 30, 50].map(n => <option key={n} value={n}>{n} songs</option>)}
           </select>
         </div>
