@@ -69,6 +69,17 @@ function toPageLimit(value) {
 }
 
 /**
+ * dose-1.84: AI list limit (same bar as server parseAiLimit / toPositiveInt).
+ * Caps at 50 to match AI_MAX_LIMIT. Omitted/null/empty -> undefined (server default).
+ */
+function toAiLimit(value) {
+  if (value == null || value === '') return undefined;
+  const n = Number(value);
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n <= 0) return null;
+  return Math.min(n, 50);
+}
+
+/**
  * dose-1.83: client pagination offset (same bar as server parsePageOffset /
  * toNonNegInt). Reject NaN/negative/non-integer when present. Omitted -> undefined.
  */
@@ -174,6 +185,22 @@ function normalizeListParams(params) {
     if (off === null) return null;
     if (off === undefined) delete out.offset;
     else out.offset = off;
+  }
+  return out;
+}
+
+/**
+ * dose-1.84: normalize AI list params (limit only; same bar as server parseAiLimit).
+ * Reject invalid present limit before GET so junk never hits the controller.
+ */
+function normalizeAiListParams(params) {
+  if (!params || typeof params !== 'object') return params || {};
+  const out = { ...params };
+  if (Object.prototype.hasOwnProperty.call(out, 'limit')) {
+    const lim = toAiLimit(out.limit);
+    if (lim === null) return null;
+    if (lim === undefined) delete out.limit;
+    else out.limit = lim;
   }
   return out;
 }
@@ -309,14 +336,28 @@ export const musicService = {
   },
 
   getAIStatus: () => api.get('/ai/status').then(r => r.data),
-  getRecommendations: (params) => api.get('/ai/recommendations', { params }).then(r => r.data),
+  // dose-1.84: normalize limit (same bar as server parseAiLimit) before GET.
+  getRecommendations: (params) => {
+    const normalized = normalizeAiListParams(params);
+    if (normalized === null) return Promise.reject(new Error('Invalid limit'));
+    return api.get('/ai/recommendations', { params: normalized }).then(r => r.data);
+  },
   getDailyMix: () => api.get('/ai/daily-mix').then(r => r.data),
-  getSimilarSongs: (songId) => {
+  // dose-1.84: optional limit on similar (server parseAiLimit default 10).
+  getSimilarSongs: (songId, params) => {
     const sid = toPositiveId(songId);
     if (sid == null) return Promise.reject(new Error('Invalid song id'));
-    return api.get(`/ai/similar/${sid}`).then(r => r.data);
+    const normalized = normalizeAiListParams(params);
+    if (normalized === null) return Promise.reject(new Error('Invalid limit'));
+    return api.get(`/ai/similar/${sid}`, { params: normalized }).then(r => r.data);
   },
   detectMood: (input) => api.post('/ai/mood/detect', { input }).then(r => r.data),
-  search: (q) => api.get('/ai/search', { params: { q } }).then(r => r.data),
+  // dose-1.84: optional limit on semantic search (server parseAiLimit).
+  search: (q, params) => {
+    const base = { q, ...(params && typeof params === 'object' ? params : {}) };
+    const normalized = normalizeAiListParams(base);
+    if (normalized === null) return Promise.reject(new Error('Invalid limit'));
+    return api.get('/ai/search', { params: normalized }).then(r => r.data);
+  },
   chat: (message, history, context) => api.post('/ai/chat', { message, conversationHistory: history, context }).then(r => r.data),
 };
