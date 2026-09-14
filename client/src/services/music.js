@@ -252,6 +252,43 @@ function normalizeCreateRoom(data) {
   return out;
 }
 
+/**
+ * dose-1.86: normalize createPlaylist body so name is a non-empty trimmed
+ * string (required by server) and isPublic is a boolean when present
+ * (same bar as server createPlaylist: isPublic !== false). Reject empty/blank
+ * name or non-coercible isPublic before POST so junk never reaches the controller.
+ * description is left as-is (server stores null when falsy).
+ */
+function normalizeCreatePlaylist(data) {
+  if (!data || typeof data !== 'object') return data;
+  const out = { ...data };
+
+  if (Object.prototype.hasOwnProperty.call(out, 'name') || true) {
+    // name is required; treat missing as invalid
+    const raw = out.name;
+    if (raw == null || typeof raw !== 'string') return null;
+    const name = raw.trim();
+    if (!name) return null;
+    out.name = name;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(out, 'isPublic')) {
+    if (typeof out.isPublic !== 'boolean') {
+      if (out.isPublic === true || out.isPublic === false) {
+        // already boolean
+      } else if (out.isPublic === 'true' || out.isPublic === 1 || out.isPublic === '1') {
+        out.isPublic = true;
+      } else if (out.isPublic === 'false' || out.isPublic === 0 || out.isPublic === '0') {
+        out.isPublic = false;
+      } else {
+        return null;
+      }
+    }
+  }
+
+  return out;
+}
+
 export const musicService = {
   getSongs: (params) => {
     const normalized = normalizeListParams(params);
@@ -299,7 +336,13 @@ export const musicService = {
     if (pid == null) return Promise.reject(new Error('Invalid playlist id'));
     return api.get(`/playlists/${pid}`).then(r => r.data);
   },
-  createPlaylist: (data) => api.post('/playlists', data).then(r => r.data),
+  createPlaylist: (data) => {
+    // dose-1.86: normalize name (required non-empty trim) + isPublic before POST
+    // (same bars as server playlistController createPlaylist).
+    const normalized = normalizeCreatePlaylist(data);
+    if (normalized === null) return Promise.reject(new Error('Invalid createPlaylist payload'));
+    return api.post('/playlists', normalized || {}).then(r => r.data);
+  },
   addToPlaylist: (playlistId, songId) => {
     const pid = toPositiveId(playlistId);
     const sid = toPositiveId(songId);
