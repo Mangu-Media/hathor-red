@@ -55,6 +55,27 @@ function toSongCount(value) {
   return n;
 }
 
+/**
+ * dose-1.80: normalize updatePlaybackState payload so currentSongId is either
+ * null (clear) or a positive int (same bar as server toPositiveInt). Reject
+ * NaN/0/negative/non-integer before POST. Other fields pass through; server
+ * still defense-in-depths position/volume/speed/isPlaying.
+ */
+function normalizePlaybackState(state) {
+  if (!state || typeof state !== 'object') return state;
+  const out = { ...state };
+  if (Object.prototype.hasOwnProperty.call(out, 'currentSongId')) {
+    if (out.currentSongId == null) {
+      out.currentSongId = null;
+    } else {
+      const sid = toPositiveId(out.currentSongId);
+      if (sid == null) return null; // signal invalid
+      out.currentSongId = sid;
+    }
+  }
+  return out;
+}
+
 export const musicService = {
   getSongs: (params) => api.get('/songs', { params }).then(r => r.data),
   getMySongs: (params) => api.get('/songs/mine', { params }).then(r => r.data),
@@ -145,7 +166,13 @@ export const musicService = {
       if (data && Object.prototype.hasOwnProperty.call(data, 'state')) return data.state;
       return data;
     }),
-  updatePlaybackState: (state) => api.post('/playback/state', state).then(r => r.data),
+  updatePlaybackState: (state) => {
+    // dose-1.80: normalize currentSongId to positive int or null before POST
+    // (same bar as server updatePlaybackState / toPositiveInt).
+    const normalized = normalizePlaybackState(state);
+    if (normalized === null) return Promise.reject(new Error('Invalid currentSongId'));
+    return api.post('/playback/state', normalized || {}).then(r => r.data);
+  },
 
   getRooms: () => api.get('/rooms').then(r => r.data),
   getRoom: (id) => {
