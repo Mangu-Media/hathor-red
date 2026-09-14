@@ -299,6 +299,30 @@ function normalizeCreatePlaylist(data) {
   return out;
 }
 
+/**
+ * dose-1.88: normalize generateAIPlaylist args so prompt is a required
+ * non-empty trimmed string (same bar as server playlistController
+ * generateAIPlaylist `if (!prompt)` 400). name is optional (server falls
+ * back to `AI: ${prompt.slice(0, 40)}`); when present, trim only.
+ * songCount already gated by toSongCount.
+ */
+function normalizeGenerateAIPlaylist(prompt, name, songCount) {
+  if (prompt == null || typeof prompt !== 'string') return null;
+  const trimmedPrompt = prompt.trim();
+  if (!trimmedPrompt) return null;
+
+  const count = toSongCount(songCount);
+  if (count === null) return null;
+
+  const body = { prompt: trimmedPrompt };
+  if (name != null && typeof name === 'string') {
+    const trimmedName = name.trim();
+    if (trimmedName) body.name = trimmedName;
+  }
+  if (count !== undefined) body.songCount = count;
+  return body;
+}
+
 export const musicService = {
   getSongs: (params) => {
     const normalized = normalizeListParams(params);
@@ -387,12 +411,11 @@ export const musicService = {
     return api.delete(`/playlists/${pid}`).then(r => r.data);
   },
   generateAIPlaylist: (prompt, name, songCount) => {
-    // dose-1.79: positive-int bar on songCount before POST (server rejects
-    // NaN/0/negative/non-integer with 400; omit when unset so default applies).
-    const count = toSongCount(songCount);
-    if (count === null) return Promise.reject(new Error('Invalid songCount'));
-    const body = { prompt, name };
-    if (count !== undefined) body.songCount = count;
+    // dose-1.88: require non-empty trimmed prompt (same bar as server
+    // generateAIPlaylist `if (!prompt)` 400); optional name trimmed when present;
+    // songCount via toSongCount (dose-1.79).
+    const body = normalizeGenerateAIPlaylist(prompt, name, songCount);
+    if (body === null) return Promise.reject(new Error('Invalid generateAIPlaylist payload'));
     return api.post('/playlists/generate-ai', body).then(r => r.data);
   },
 
