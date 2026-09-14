@@ -42,6 +42,19 @@ function toListeningDuration(value) {
   return n;
 }
 
+/**
+ * dose-1.79: positive integer songCount for AI playlist (same bar as server
+ * toPositiveInt / DEFAULT_AI_PLAYLIST_SIZE path). Reject NaN/0/negative/
+ * non-integer before POST so we never send junk the controller would 400.
+ * When omitted/null/empty, leave undefined so server applies its default.
+ */
+function toSongCount(value) {
+  if (value == null || value === '') return undefined;
+  const n = Number(value);
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n <= 0) return null;
+  return n;
+}
+
 export const musicService = {
   getSongs: (params) => api.get('/songs', { params }).then(r => r.data),
   getMySongs: (params) => api.get('/songs/mine', { params }).then(r => r.data),
@@ -99,14 +112,31 @@ export const musicService = {
   reorderPlaylist: (playlistId, songIds) => {
     const pid = toPositiveId(playlistId);
     if (pid == null) return Promise.reject(new Error('Invalid playlist id'));
-    return api.put(`/playlists/${pid}/reorder`, { songIds }).then((r) => r.data);
+    // dose-1.79: normalize songIds to positive ints client-side (same bar as
+    // server reorderPlaylistSongs) so we never POST junk the controller 400s.
+    if (!Array.isArray(songIds) || songIds.length === 0) {
+      return Promise.reject(new Error('Invalid songIds'));
+    }
+    const normalized = songIds.map((x) => toPositiveId(x)).filter((n) => n != null);
+    if (normalized.length !== songIds.length) {
+      return Promise.reject(new Error('Invalid song id in songIds'));
+    }
+    return api.put(`/playlists/${pid}/reorder`, { songIds: normalized }).then((r) => r.data);
   },
   deletePlaylist: (id) => {
     const pid = toPositiveId(id);
     if (pid == null) return Promise.reject(new Error('Invalid playlist id'));
     return api.delete(`/playlists/${pid}`).then(r => r.data);
   },
-  generateAIPlaylist: (prompt, name, songCount) => api.post('/playlists/generate-ai', { prompt, name, songCount }).then(r => r.data),
+  generateAIPlaylist: (prompt, name, songCount) => {
+    // dose-1.79: positive-int bar on songCount before POST (server rejects
+    // NaN/0/negative/non-integer with 400; omit when unset so default applies).
+    const count = toSongCount(songCount);
+    if (count === null) return Promise.reject(new Error('Invalid songCount'));
+    const body = { prompt, name };
+    if (count !== undefined) body.songCount = count;
+    return api.post('/playlists/generate-ai', body).then(r => r.data);
+  },
 
   // Controller returns { state: row | null }; unwrap so hydrate sees the row (or null).
   getPlaybackState: () =>
