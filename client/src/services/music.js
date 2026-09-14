@@ -56,11 +56,13 @@ function toSongCount(value) {
 }
 
 /**
- * dose-1.80 / dose-1.81: normalize updatePlaybackState payload so
- * currentSongId is null or positive int, and position / volume /
- * playbackSpeed / isPlaying match server toBoundedNumber / toStrictBoolean
- * bars. Reject invalid present values before POST so junk never reaches the
- * controller. Omitted keys are left alone (server COALESCE leaves prior).
+ * dose-1.80 / dose-1.81 / dose-1.82: normalize updatePlaybackState payload so
+ * currentSongId is null or positive int, position / volume / playbackSpeed /
+ * isPlaying match server toBoundedNumber / toStrictBoolean, and pitchShift /
+ * stemsConfig match server toPitchShift / toStemsConfig bars. Reject invalid
+ * present values before POST so junk never reaches the controller. Omitted
+ * keys are left alone (server COALESCE / CASE leaves prior). Pitch/stems UI
+ * does not ship; guards are defense-in-depth only.
  */
 function normalizePlaybackState(state) {
   if (!state || typeof state !== 'object') return state;
@@ -103,6 +105,28 @@ function normalizePlaybackState(state) {
   // isPlaying: strict boolean only when present
   if (Object.prototype.hasOwnProperty.call(out, 'isPlaying')) {
     if (typeof out.isPlaying !== 'boolean') return null;
+  }
+
+  // dose-1.82: pitchShift — same bar as server toPitchShift (-24..24 semitones).
+  // Explicit null clears; invalid present value rejects before POST.
+  if (Object.prototype.hasOwnProperty.call(out, 'pitchShift')) {
+    if (out.pitchShift === null) {
+      // allow explicit clear
+    } else {
+      const n = Number(out.pitchShift);
+      if (!Number.isFinite(n) || n < -24 || n > 24) return null;
+      out.pitchShift = n;
+    }
+  }
+
+  // dose-1.82: stemsConfig — same bar as server toStemsConfig (plain object or null).
+  // Explicit null clears; arrays/primitives/string junk reject before POST.
+  if (Object.prototype.hasOwnProperty.call(out, 'stemsConfig')) {
+    if (out.stemsConfig === null) {
+      // allow explicit clear
+    } else if (typeof out.stemsConfig !== 'object' || Array.isArray(out.stemsConfig)) {
+      return null;
+    }
   }
 
   return out;
@@ -199,8 +223,9 @@ export const musicService = {
       return data;
     }),
   updatePlaybackState: (state) => {
-    // dose-1.80 / dose-1.81: normalize currentSongId + position/volume/
-    // playbackSpeed/isPlaying before POST (same bars as server controller).
+    // dose-1.80 / dose-1.81 / dose-1.82: normalize currentSongId + position/
+    // volume/playbackSpeed/isPlaying + pitchShift/stemsConfig before POST
+    // (same bars as server controller).
     const normalized = normalizePlaybackState(state);
     if (normalized === null) return Promise.reject(new Error('Invalid playback state payload'));
     return api.post('/playback/state', normalized || {}).then(r => r.data);
