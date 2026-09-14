@@ -56,14 +56,16 @@ function toSongCount(value) {
 }
 
 /**
- * dose-1.80: normalize updatePlaybackState payload so currentSongId is either
- * null (clear) or a positive int (same bar as server toPositiveInt). Reject
- * NaN/0/negative/non-integer before POST. Other fields pass through; server
- * still defense-in-depths position/volume/speed/isPlaying.
+ * dose-1.80 / dose-1.81: normalize updatePlaybackState payload so
+ * currentSongId is null or positive int, and position / volume /
+ * playbackSpeed / isPlaying match server toBoundedNumber / toStrictBoolean
+ * bars. Reject invalid present values before POST so junk never reaches the
+ * controller. Omitted keys are left alone (server COALESCE leaves prior).
  */
 function normalizePlaybackState(state) {
   if (!state || typeof state !== 'object') return state;
   const out = { ...state };
+
   if (Object.prototype.hasOwnProperty.call(out, 'currentSongId')) {
     if (out.currentSongId == null) {
       out.currentSongId = null;
@@ -73,6 +75,36 @@ function normalizePlaybackState(state) {
       out.currentSongId = sid;
     }
   }
+
+  // position: seconds, non-negative, upper bound 7200 (same as server)
+  if (Object.prototype.hasOwnProperty.call(out, 'position')) {
+    if (out.position == null) return null;
+    const n = Number(out.position);
+    if (!Number.isFinite(n) || n < 0 || n > 7200) return null;
+    out.position = n;
+  }
+
+  // volume: HTML5 audio 0–1
+  if (Object.prototype.hasOwnProperty.call(out, 'volume')) {
+    if (out.volume == null) return null;
+    const n = Number(out.volume);
+    if (!Number.isFinite(n) || n < 0 || n > 1) return null;
+    out.volume = n;
+  }
+
+  // playbackSpeed: 0.25–4 (server bar; client UI clamps 0.5–2)
+  if (Object.prototype.hasOwnProperty.call(out, 'playbackSpeed')) {
+    if (out.playbackSpeed == null) return null;
+    const n = Number(out.playbackSpeed);
+    if (!Number.isFinite(n) || n < 0.25 || n > 4) return null;
+    out.playbackSpeed = n;
+  }
+
+  // isPlaying: strict boolean only when present
+  if (Object.prototype.hasOwnProperty.call(out, 'isPlaying')) {
+    if (typeof out.isPlaying !== 'boolean') return null;
+  }
+
   return out;
 }
 
@@ -167,10 +199,10 @@ export const musicService = {
       return data;
     }),
   updatePlaybackState: (state) => {
-    // dose-1.80: normalize currentSongId to positive int or null before POST
-    // (same bar as server updatePlaybackState / toPositiveInt).
+    // dose-1.80 / dose-1.81: normalize currentSongId + position/volume/
+    // playbackSpeed/isPlaying before POST (same bars as server controller).
     const normalized = normalizePlaybackState(state);
-    if (normalized === null) return Promise.reject(new Error('Invalid currentSongId'));
+    if (normalized === null) return Promise.reject(new Error('Invalid playback state payload'));
     return api.post('/playback/state', normalized || {}).then(r => r.data);
   },
 
