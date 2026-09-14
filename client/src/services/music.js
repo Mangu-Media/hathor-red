@@ -218,14 +218,24 @@ function normalizeAiListParams(params) {
 }
 
 /**
- * dose-1.85: normalize createRoom body so maxListeners is positive int (cap 100)
- * or omitted, and isPublic is a strict boolean when present. Same bars as
- * server roomController createRoom (toPositiveInt + isPublic !== false).
- * Reject invalid present maxListeners before POST.
+ * dose-1.85 / dose-1.87: normalize createRoom body so name is a non-empty
+ * trimmed string (required by server roomController createRoom `!name` 400),
+ * maxListeners is positive int (cap 100) or omitted, and isPublic is a
+ * strict boolean when present (same bars as server toPositiveInt +
+ * isPublic !== false). Reject empty/blank name or invalid maxListeners
+ * before POST so junk never reaches the controller.
  */
 function normalizeCreateRoom(data) {
   if (!data || typeof data !== 'object') return data;
   const out = { ...data };
+
+  // dose-1.87: name is required; treat missing/blank as invalid (parity with
+  // server createRoom and client createPlaylist normalize).
+  const rawName = out.name;
+  if (rawName == null || typeof rawName !== 'string') return null;
+  const name = rawName.trim();
+  if (!name) return null;
+  out.name = name;
 
   if (Object.prototype.hasOwnProperty.call(out, 'maxListeners')) {
     const max = toMaxListeners(out.maxListeners);
@@ -409,8 +419,8 @@ export const musicService = {
     return api.get(`/rooms/${rid}`).then(r => r.data);
   },
   createRoom: (data) => {
-    // dose-1.85: normalize maxListeners + isPublic before POST (same bars as
-    // server roomController createRoom).
+    // dose-1.85 / dose-1.87: normalize name (required non-empty trim) +
+    // maxListeners + isPublic before POST (same bars as server roomController createRoom).
     const normalized = normalizeCreateRoom(data);
     if (normalized === null) return Promise.reject(new Error('Invalid createRoom payload'));
     return api.post('/rooms', normalized || {}).then(r => r.data);
