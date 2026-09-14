@@ -91,6 +91,18 @@ function toPageOffset(value) {
 }
 
 /**
+ * dose-1.85: positive integer maxListeners for createRoom (same bar as server
+ * toPositiveInt / MAX_ROOM_MAX_LISTENERS). Reject NaN/0/negative/non-integer
+ * when present. Cap at 100. Omitted/null/empty -> undefined (server default).
+ */
+function toMaxListeners(value) {
+  if (value == null || value === '') return undefined;
+  const n = Number(value);
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n <= 0) return null;
+  return Math.min(n, 100);
+}
+
+/**
  * dose-1.80 / dose-1.81 / dose-1.82: normalize updatePlaybackState payload so
  * currentSongId is null or positive int, position / volume / playbackSpeed /
  * isPlaying match server toBoundedNumber / toStrictBoolean, and pitchShift /
@@ -202,6 +214,41 @@ function normalizeAiListParams(params) {
     if (lim === undefined) delete out.limit;
     else out.limit = lim;
   }
+  return out;
+}
+
+/**
+ * dose-1.85: normalize createRoom body so maxListeners is positive int (cap 100)
+ * or omitted, and isPublic is a strict boolean when present. Same bars as
+ * server roomController createRoom (toPositiveInt + isPublic !== false).
+ * Reject invalid present maxListeners before POST.
+ */
+function normalizeCreateRoom(data) {
+  if (!data || typeof data !== 'object') return data;
+  const out = { ...data };
+
+  if (Object.prototype.hasOwnProperty.call(out, 'maxListeners')) {
+    const max = toMaxListeners(out.maxListeners);
+    if (max === null) return null;
+    if (max === undefined) delete out.maxListeners;
+    else out.maxListeners = max;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(out, 'isPublic')) {
+    if (typeof out.isPublic !== 'boolean') {
+      // coerce common truthy/falsy; still require a real boolean intent
+      if (out.isPublic === true || out.isPublic === false) {
+        // already boolean
+      } else if (out.isPublic === 'true' || out.isPublic === 1 || out.isPublic === '1') {
+        out.isPublic = true;
+      } else if (out.isPublic === 'false' || out.isPublic === 0 || out.isPublic === '0') {
+        out.isPublic = false;
+      } else {
+        return null;
+      }
+    }
+  }
+
   return out;
 }
 
@@ -318,7 +365,13 @@ export const musicService = {
     if (rid == null) return Promise.reject(new Error('Invalid room id'));
     return api.get(`/rooms/${rid}`).then(r => r.data);
   },
-  createRoom: (data) => api.post('/rooms', data).then(r => r.data),
+  createRoom: (data) => {
+    // dose-1.85: normalize maxListeners + isPublic before POST (same bars as
+    // server roomController createRoom).
+    const normalized = normalizeCreateRoom(data);
+    if (normalized === null) return Promise.reject(new Error('Invalid createRoom payload'));
+    return api.post('/rooms', normalized || {}).then(r => r.data);
+  },
   joinRoom: (id) => {
     const rid = toPositiveId(id);
     if (rid == null) return Promise.reject(new Error('Invalid room id'));
