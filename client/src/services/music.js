@@ -56,6 +56,30 @@ function toSongCount(value) {
 }
 
 /**
+ * dose-1.83: client pagination limit (same bar as server parsePageLimit /
+ * toPositiveInt). Reject NaN/0/negative/non-integer when present so we never
+ * send junk the controller would 400. Omitted/null/empty left alone (server default).
+ * Caps at 100 to match typical MAX_PAGE_LIMIT without importing server constants.
+ */
+function toPageLimit(value) {
+  if (value == null || value === '') return undefined;
+  const n = Number(value);
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n <= 0) return null;
+  return Math.min(n, 100);
+}
+
+/**
+ * dose-1.83: client pagination offset (same bar as server parsePageOffset /
+ * toNonNegInt). Reject NaN/negative/non-integer when present. Omitted -> undefined.
+ */
+function toPageOffset(value) {
+  if (value == null || value === '') return undefined;
+  const n = Number(value);
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0) return null;
+  return n;
+}
+
+/**
  * dose-1.80 / dose-1.81 / dose-1.82: normalize updatePlaybackState payload so
  * currentSongId is null or positive int, position / volume / playbackSpeed /
  * isPlaying match server toBoundedNumber / toStrictBoolean, and pitchShift /
@@ -132,9 +156,39 @@ function normalizePlaybackState(state) {
   return out;
 }
 
+/**
+ * dose-1.83: strip/normalize limit + offset on list params so callers cannot
+ * send NaN/negative/non-integer pagination the server would 400.
+ */
+function normalizeListParams(params) {
+  if (!params || typeof params !== 'object') return params;
+  const out = { ...params };
+  if (Object.prototype.hasOwnProperty.call(out, 'limit')) {
+    const lim = toPageLimit(out.limit);
+    if (lim === null) return null;
+    if (lim === undefined) delete out.limit;
+    else out.limit = lim;
+  }
+  if (Object.prototype.hasOwnProperty.call(out, 'offset')) {
+    const off = toPageOffset(out.offset);
+    if (off === null) return null;
+    if (off === undefined) delete out.offset;
+    else out.offset = off;
+  }
+  return out;
+}
+
 export const musicService = {
-  getSongs: (params) => api.get('/songs', { params }).then(r => r.data),
-  getMySongs: (params) => api.get('/songs/mine', { params }).then(r => r.data),
+  getSongs: (params) => {
+    const normalized = normalizeListParams(params);
+    if (normalized === null) return Promise.reject(new Error('Invalid limit or offset'));
+    return api.get('/songs', { params: normalized }).then(r => r.data);
+  },
+  getMySongs: (params) => {
+    const normalized = normalizeListParams(params);
+    if (normalized === null) return Promise.reject(new Error('Invalid limit or offset'));
+    return api.get('/songs/mine', { params: normalized }).then(r => r.data);
+  },
   // Controller returns { song }; unwrap so callers (hydrate, detail) get the row.
   getSong: (id) => {
     const sid = toPositiveId(id);
