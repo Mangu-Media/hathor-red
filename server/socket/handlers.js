@@ -135,10 +135,10 @@ async function departRoom(io, socket, roomId, { announce = true } = {}) {
 
 function sanitizeChatMessage(message) {
   return String(message || '')
-    .replace(/&/g, '&')
-    .replace(/</g, '<')
-    .replace(/>/g, '>')
-    .replace(/"/g, '"')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;')
     .trim()
     .slice(0, MAX_CHAT_MESSAGE_LENGTH);
@@ -379,7 +379,7 @@ const setupSocketHandlers = (io) => {
         if (!allowEvent(socket, 'chat', 3)) return socket.emit('error', { message: 'Slow down' });
         const sanitizedMessage = sanitizeChatMessage(message);
         if (!sanitizedMessage) return;
-        io.to(`room-${roomIdNum}`).emit('room-chat', {
+        io.to(`room-${roomIdNum}`).emit('chat-message', {
           userId: socket.userId,
           username: socket.username,
           message: sanitizedMessage,
@@ -455,3 +455,8 @@ const setupSocketHandlers = (io) => {
 module.exports = setupSocketHandlers;
 module.exports.getRoomPresenceCounts = getRoomPresenceCounts;
 module.exports.getRoomPresenceRoster = getRoomPresenceRoster;
+module.exports.resetStateForTests = () => {
+  activeUsers.clear();
+  roomHosts.clear();
+  roomPresence.clear();
+};
