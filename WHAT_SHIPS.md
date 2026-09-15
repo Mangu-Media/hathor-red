@@ -1,6 +1,6 @@
 # WHAT_SHIPS — Hathor Red live capability snapshot
 
-Last updated: 2026-09-15 (dose-1.93: harden getStreamUrl empty-url reject).
+Last updated: 2026-09-15 (dose-2.96: harden updateProfile client normalize).
 
 ## Ships today
 
@@ -11,6 +11,7 @@ Last updated: 2026-09-15 (dose-1.93: harden getStreamUrl empty-url reject).
 - **Player**: full PlayerContext (queue, shuffle, seek guards, hydrate, logout clear, stream error one-shot retry).
 - **Queue UI / Playlists / Home genre / Rooms / Olympus flags / Podcasts (soon)** as prior.
 - **Pitch/stems**: not implemented; UI hidden.
+- **dose-2.96**: `authService.updateProfile` normalizes client-side (required non-empty trimmed displayName ≤100 when present; avatarUrl empty-to-clear or valid http(s) URL) before PUT so Settings never posts junk the server would 400.
 
 ## Does not ship
 
@@ -22,11 +23,11 @@ Last updated: 2026-09-15 (dose-1.93: harden getStreamUrl empty-url reject).
 |------|--------|
 | 0 Truth | Done |
 | 1 Playback | Core through dose-1.93; getStreamUrl empty-url bar |
-| 2 Account | Soft logout + profile path present |
+| 2 Account | Soft logout + profile path + client normalize (dose-2.96) |
 | 3–5 | Routes/flags/rooms as prior |
 
 ## Next item
 
-Dose 2 account basics verification (profile save path + soft logout end-to-end); then Dose 3 home/playlists filters.
+Dose 3 home/playlists: confirm genre filter actually filters; `/playlists` list + playlist detail route honesty.
 
 See also: [README.md](README.md), [BUGS.md](BUGS.md), [API.md](API.md).
