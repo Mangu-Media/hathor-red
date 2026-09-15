@@ -128,6 +128,27 @@ function normalizePlaybackState(state) {
   return out;
 }
 
+/** Same list as server/config/constants.js ALLOWED_GENRES (dose-3.1). */
+const ALLOWED_GENRES = [
+  'Rock', 'Pop', 'Jazz', 'Classical', 'Hip Hop', 'Electronic',
+  'R&B', 'Country', 'Metal', 'Indie', 'Blues', 'Folk', 'Ambient',
+  'Reggae', 'Latin', 'Afrobeats', 'K-Pop', 'J-Pop', 'World',
+  'Soul', 'Funk', 'Disco', 'Punk', 'House', 'Techno', 'Trance',
+  'Dubstep', 'Trap', 'Drum and Bass', 'Gospel', 'Opera',
+  'Soundtrack', 'New Age', 'Lo-Fi', 'Progressive Rock',
+  'Alternative', 'Grunge', 'Ska', 'Bluegrass', 'Swing',
+];
+
+/** Resolve client genre string to canonical ALLOWED_GENRES entry (case-insensitive). */
+function resolveAllowedGenre(raw) {
+  if (raw == null || typeof raw !== 'string') return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const lower = trimmed.toLowerCase();
+  const match = ALLOWED_GENRES.find((g) => g.toLowerCase() === lower);
+  return match || null;
+}
+
 function normalizeListParams(params) {
   if (params == null) return {};
   if (typeof params !== 'object') return null;
@@ -141,6 +162,17 @@ function normalizeListParams(params) {
     const n = Number(out.offset);
     if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0) return null;
     out.offset = n;
+  }
+  // dose-3.1: genre bar matching server resolveAllowedGenre — rewrite to
+  // canonical casing or reject so Home filter never 400s the API.
+  if (Object.prototype.hasOwnProperty.call(out, 'genre')) {
+    if (out.genre == null || out.genre === '') {
+      delete out.genre;
+    } else {
+      const resolved = resolveAllowedGenre(out.genre);
+      if (resolved == null) return null;
+      out.genre = resolved;
+    }
   }
   return out;
 }
@@ -258,7 +290,7 @@ function normalizeUploadFormData(formData) {
 export const musicService = {
   getSongs: (params) => {
     const normalized = normalizeListParams(params);
-    if (normalized === null) return Promise.reject(new Error('Invalid limit or offset'));
+    if (normalized === null) return Promise.reject(new Error('Invalid limit, offset, or genre'));
     return api.get('/songs', { params: normalized }).then(r => r.data);
   },
   getMySongs: (params) => {
