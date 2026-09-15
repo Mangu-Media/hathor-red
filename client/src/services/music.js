@@ -276,12 +276,21 @@ export const musicService = {
     });
   },
   getGenres: () => api.get('/songs/genres').then(r => r.data),
+  /**
+   * dose-1.93: after resolveStreamUrl, reject empty/non-string url so
+   * PlayerContext loadSong never assigns a blank <audio src> (same contract
+   * as the existing "No stream URL" throw path).
+   */
   getStreamUrl: (id) => {
     const sid = toPositiveId(id);
     if (sid == null) return Promise.reject(new Error('Invalid song id'));
     return api.get(`/songs/${sid}/stream-url`).then((r) => {
       const data = r.data || {};
-      return { ...data, url: resolveStreamUrl(data.url) };
+      const url = resolveStreamUrl(data.url);
+      if (!url || typeof url !== 'string') {
+        return Promise.reject(new Error('No stream URL'));
+      }
+      return { ...data, url };
     });
   },
   uploadSong: (formData) => {
