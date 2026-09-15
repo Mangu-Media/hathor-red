@@ -4,6 +4,13 @@ This document lists identified bugs, security vulnerabilities, and architectural
 
 ## 🔴 Critical Severity
 
+### 1c. PlayerContext / music.js truncated by agent push (2026-09-15)
+*   **Description**: `client/src/services/music.js` on main was reduced to a ~570-byte stub after a failed large-file push (dose-1.91 attempt). Full file lived at blob `68e83f343bb92ff181dbf090b1d8d7f49c242f3e` (~21KB).
+*   **Impact**: Critical — all `musicService` methods missing; SPA import breaks playback, playlists, rooms, AI calls.
+*   **Root Cause**: Agent `github___push_files` / `create_or_update_file` path with incomplete content string.
+*   **Suggested Fix**: Restore full content from blob `68e83f34` (or local agent artifact with dose-1.91 guards), verify blob size > 20KB after push.
+*   **Status**: **Open** — must restore before further Dose 1 claims.
+
 ### 1b. PlayerContext.js Placeholder on Main (dose-1.15)
 *   **Description**: `client/src/contexts/PlayerContext.js` is a 24–35 byte stub (`SEE_LOCAL_FILE_TOO_LARGE_FOR_INLINE` or push truncation residue). The SPA imports `PlayerProvider` from this path; playback is non-functional.
 *   **Impact**: Critical — no queue, stream, shuffle, or hydrate.
