@@ -1,6 +1,6 @@
 # WHAT_SHIPS — Hathor Red live capability snapshot
 
-Last updated: 2026-09-15 (dose-3.1: client genre bar for getSongs).
+Last updated: 2026-09-15 (dose-3.2: client search param bar for getSongs).
 
 ## Ships today
 
@@ -13,6 +13,7 @@ Last updated: 2026-09-15 (dose-3.1: client genre bar for getSongs).
 - **Pitch/stems**: not implemented; UI hidden.
 - **dose-2.96**: `authService.updateProfile` normalizes client-side (required non-empty trimmed displayName ≤100 when present; avatarUrl empty-to-clear or valid http(s) URL) before PUT so Settings never posts junk the server would 400.
 - **dose-3.1**: `musicService.getSongs` normalizes `genre` against the same ALLOWED_GENRES list as the server (case-insensitive resolve to canonical name; reject unknown) inside `normalizeListParams` so Home genre filter never sends an invalid query the API would 400.
+- **dose-3.2**: `normalizeListParams` also bars `search` (trim; empty clears; reject non-string or length > 200) so catalog list queries never send unbounded or junk search strings to the ILIKE path.
 
 ## Does not ship
 
@@ -25,11 +26,11 @@ Last updated: 2026-09-15 (dose-3.1: client genre bar for getSongs).
 | 0 Truth | Done |
 | 1 Playback | Core through dose-1.93; getStreamUrl empty-url bar |
 | 2 Account | Soft logout + profile path + client normalize (dose-2.96) |
-| 3 Home/playlists | Genre client bar (dose-3.1); routes/list/detail present |
+| 3 Home/playlists | Genre + search client bars (dose-3.1 / 3.2); routes/list/detail present |
 | 4–5 | Rooms/flags as prior |
 
 ## Next item
 
-Dose 3: further home/playlists honesty if any (search param bar, empty genre clear path); then Dose 4 rooms disconnect/participants.
+Dose 4: rooms disconnect cleans participants; host song picker; honest listener counts.
 
 See also: [README.md](README.md), [BUGS.md](BUGS.md), [API.md](API.md).

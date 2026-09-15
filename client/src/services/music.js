@@ -174,6 +174,20 @@ function normalizeListParams(params) {
       out.genre = resolved;
     }
   }
+  // dose-3.2: search param bar for getSongs (server ILIKE title/artist/album).
+  // Trim; empty clears; reject non-string or length > 200 so we never send
+  // junk the controller would treat as a broad or expensive pattern.
+  if (Object.prototype.hasOwnProperty.call(out, 'search')) {
+    if (out.search == null || out.search === '') {
+      delete out.search;
+    } else if (typeof out.search !== 'string') {
+      return null;
+    } else {
+      const trimmed = out.search.trim();
+      if (!trimmed || trimmed.length > 200) return null;
+      out.search = trimmed;
+    }
+  }
   return out;
 }
 
@@ -290,7 +304,7 @@ function normalizeUploadFormData(formData) {
 export const musicService = {
   getSongs: (params) => {
     const normalized = normalizeListParams(params);
-    if (normalized === null) return Promise.reject(new Error('Invalid limit, offset, or genre'));
+    if (normalized === null) return Promise.reject(new Error('Invalid limit, offset, genre, or search'));
     return api.get('/songs', { params: normalized }).then(r => r.data);
   },
   getMySongs: (params) => {
