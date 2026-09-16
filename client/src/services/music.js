@@ -238,13 +238,14 @@ function normalizeCreatePlaylist(data) {
 function normalizeGenerateAIPlaylist(prompt, name, songCount) {
   if (prompt == null || typeof prompt !== 'string') return null;
   const trimmedPrompt = prompt.trim();
-  if (!trimmedPrompt) return null;
+  // dose-5.1: reject oversize prompt so AI/fallback path never receives unbounded strings
+  if (!trimmedPrompt || trimmedPrompt.length > 500) return null;
   const count = toSongCount(songCount);
   if (count === null) return null;
   const body = { prompt: trimmedPrompt };
   if (name != null && typeof name === 'string') {
     const trimmedName = name.trim();
-    if (trimmedName) body.name = trimmedName;
+    if (trimmedName) body.name = trimmedName.slice(0, 100);
   }
   if (count !== undefined) body.songCount = count;
   return body;
@@ -348,7 +349,7 @@ export const musicService = {
   },
   recordListening: (songId, duration) => {
     const sid = toPositiveId(songId);
-    if (sid == null) return Promise.reject(new Error('Invalid song id'));
+    if (sid == null) return Promise.reject(new Error('Invalid duration'));
     const dur = toListeningDuration(duration);
     if (dur == null) return Promise.reject(new Error('Invalid duration'));
     return api.post('/songs/record-listening', { songId: sid, duration: dur }).then(r => r.data);
@@ -449,7 +450,8 @@ export const musicService = {
       return Promise.reject(new Error('Invalid detectMood input'));
     }
     const trimmed = input.trim();
-    if (!trimmed) return Promise.reject(new Error('Invalid detectMood input'));
+    // dose-5.1: length bar so mood path never receives unbounded strings
+    if (!trimmed || trimmed.length > 500) return Promise.reject(new Error('Invalid detectMood input'));
     return api.post('/ai/mood/detect', { input: trimmed }).then(r => r.data);
   },
   search: (q, params) => {
@@ -457,7 +459,8 @@ export const musicService = {
       return Promise.reject(new Error('Invalid search query'));
     }
     const trimmed = q.trim();
-    if (!trimmed) return Promise.reject(new Error('Invalid search query'));
+    // dose-5.1: same 200-char bar as catalog search so AI search never sends junk
+    if (!trimmed || trimmed.length > 200) return Promise.reject(new Error('Invalid search query'));
     const base = { query: trimmed, ...(params && typeof params === 'object' ? params : {}) };
     if (Object.prototype.hasOwnProperty.call(base, 'q')) delete base.q;
     const normalized = normalizeAiListParams(base);
@@ -469,7 +472,8 @@ export const musicService = {
       return Promise.reject(new Error('Invalid chat message'));
     }
     const trimmed = message.trim();
-    if (!trimmed) return Promise.reject(new Error('Invalid chat message'));
+    // dose-5.1: length bar so chat path never receives unbounded strings
+    if (!trimmed || trimmed.length > 2000) return Promise.reject(new Error('Invalid chat message'));
     const body = { message: trimmed, conversationHistory: history };
     if (context != null) body.context = context;
     return api.post('/ai/chat', body).then(r => r.data);
