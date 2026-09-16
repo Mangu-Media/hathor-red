@@ -66,15 +66,34 @@ const getPlaylistById = async (req, res) => {
 
 const createPlaylist = async (req, res) => {
   try {
-    const { name, description, isPublic } = req.body;
+    const { name: rawName, description: rawDescription, isPublic } = req.body;
 
-    if (!name) {
+    // dose-5.10: defense-in-depth name + description bars (middleware playlistValidation
+    // already enforces trim + notEmpty + max 100 / optional max 500). Reject non-string /
+    // empty / oversize here so a bypassed or mis-ordered middleware never inserts junk.
+    if (rawName == null || typeof rawName !== 'string') {
       return res.status(400).json({ error: 'Playlist name is required' });
+    }
+    const name = rawName.trim();
+    if (!name || name.length > 100) {
+      return res.status(400).json({ error: 'Playlist name is required (max 100 chars)' });
+    }
+
+    let description = null;
+    if (rawDescription != null && rawDescription !== '') {
+      if (typeof rawDescription !== 'string') {
+        return res.status(400).json({ error: 'Invalid playlist description' });
+      }
+      const trimmedDesc = rawDescription.trim();
+      if (trimmedDesc.length > 500) {
+        return res.status(400).json({ error: 'Playlist description max 500 chars' });
+      }
+      if (trimmedDesc) description = trimmedDesc;
     }
 
     const result = await db.query(
       'INSERT INTO playlists (user_id, name, description, is_public) VALUES ($1, $2, $3, $4) RETURNING *',
-      [req.user.userId, name, description || null, isPublic !== false]
+      [req.user.userId, name, description, isPublic !== false]
     );
 
     res.status(201).json({

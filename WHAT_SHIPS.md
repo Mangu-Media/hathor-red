@@ -1,6 +1,6 @@
 # WHAT_SHIPS — Hathor Red live capability snapshot
 
-Last updated: 2026-09-16 (dose-5.9: bar generateAIPlaylist name length in controller body).
+Last updated: 2026-09-16 (dose-5.10: bar createPlaylist name and description in controller body).
 
 ## Ships today
 
@@ -26,6 +26,7 @@ Last updated: 2026-09-16 (dose-5.9: bar generateAIPlaylist name length in contro
 - **dose-5.7**: Removed dead `aiController.generatePlaylist` (no longer routed after dose-5.6; preferred path is `playlistController.generateAIPlaylist` via `/playlists/generate-ai` and the `/ai/playlist/generate` alias). Export list cleaned.
 - **dose-5.8**: `playlistController.generateAIPlaylist` body now type-checks + trims + bars prompt length ≤ 500 (defense-in-depth; middleware `aiPlaylistValidation` already enforces). Non-string / empty / oversize → 400 before AI or moodMap path.
 - **dose-5.9**: `playlistController.generateAIPlaylist` body now type-checks + trims + bars optional `name` ≤ 100 (parity with middleware + client `normalizeGenerateAIPlaylist` + createPlaylist). Non-string / oversize → 400; empty after trim treated as absent.
+- **dose-5.10**: `playlistController.createPlaylist` body now type-checks + trims + bars required `name` ≤ 100 and optional `description` ≤ 500 (defense-in-depth; middleware `playlistValidation` already enforces). Non-string / empty / oversize → 400 before INSERT.
 
 ## Does not ship
 
@@ -40,10 +41,10 @@ Last updated: 2026-09-16 (dose-5.9: bar generateAIPlaylist name length in contro
 | 2 Account | Soft logout + profile path + client normalize (dose-2.96) |
 | 3 Home/playlists | Genre + search client bars (dose-3.1 / 3.2); routes/list/detail present |
 | 4 Rooms | Core + dose-4.1 HTTP leave host handoff + dose-4.2 host-changed emit on HTTP handoff |
-| 5 | Olympus flags + dose-5.1–5.9 (client/server AI bars, path align, shared generateAIPlaylist, dead code retired, controller prompt + name bars) |
+| 5 | Olympus flags + dose-5.1–5.10 (client/server AI bars, path align, shared generateAIPlaylist, dead code retired, controller prompt + name bars, createPlaylist name/description bars) |
 
 ## Next item
 
-Dose 5 Olympus polish complete for current bars. Optional: description length bar on createPlaylist controller if still thin. No Dose 6+.
+Dose 5 Olympus polish complete for current bars. No further thin controller bars identified. No Dose 6+.
 
 See also: [README.md](README.md), [BUGS.md](BUGS.md), [API.md](API.md).
