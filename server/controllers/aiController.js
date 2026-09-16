@@ -46,123 +46,6 @@ const getStatus = async (req, res) => {
 };
 
 /**
- * Generate intelligent playlist using AI
- */
-const generatePlaylist = async (req, res) => {
-  try {
-    const { prompt, name } = req.body;
-    const { userId } = req.user;
-
-    // dose-5.3: required non-empty string, max AI_PROMPT_MAX (parity with client)
-    if (prompt == null || typeof prompt !== 'string') {
-      return res.status(400).json({ error: 'Prompt is required' });
-    }
-    const trimmedPrompt = prompt.trim();
-    if (!trimmedPrompt || trimmedPrompt.length > AI_PROMPT_MAX) {
-      return res.status(400).json({ error: `Prompt is required (max ${AI_PROMPT_MAX} chars)` });
-    }
-
-    // dose-1.55: finite positive-int bar on body songCount (default 10, ceiling 50)
-    let songCount = AI_PLAYLIST_DEFAULT_COUNT;
-    if (req.body.songCount != null && req.body.songCount !== '') {
-      const n = toPositiveInt(req.body.songCount);
-      if (n == null) {
-        return res.status(400).json({ error: 'Invalid songCount' });
-      }
-      songCount = Math.min(n, AI_MAX_LIMIT);
-    }
-
-    // Get user's listening history for context
-    const historyResult = await db.query(
-      `SELECT s.genre, s.artist, COUNT(*) as play_count
-       FROM listening_history lh
-       JOIN songs s ON lh.song_id = s.id
-       WHERE lh.user_id = $1
-       GROUP BY s.genre, s.artist
-       ORDER BY play_count DESC
-       LIMIT 20`,
-      [userId]
-    );
-
-    const context = {
-      history: historyResult.rows,
-      favoriteGenres: [...new Set(historyResult.rows.map(r => r.genre).filter(Boolean))]
-    };
-
-    // Analyze the prompt using AI
-    const analysis = await colabAIService.analyzePlaylistPrompt(trimmedPrompt, context);
-
-    // Build query based on AI analysis
-    let query = 'SELECT * FROM songs WHERE 1=1';
-    const params = [];
-    let paramIndex = 1;
-
-    // Filter by genres
-    if (analysis.genres && analysis.genres.length > 0) {
-      const genrePlaceholders = analysis.genres.map(() => `$${paramIndex++}`).join(',');
-      query += ` AND genre IN (${genrePlaceholders})`;
-      params.push(...analysis.genres);
-    }
-
-    // Filter by year/era
-    if (analysis.era && analysis.era.start && analysis.era.end) {
-      query += ` AND year >= $${paramIndex++} AND year <= $${paramIndex++}`;
-      params.push(analysis.era.start, analysis.era.end);
-    }
-
-    // Add keyword search if available
-    if (analysis.keywords && analysis.keywords.length > 0) {
-      const keywordSearch = analysis.keywords.slice(0, 3).join(' | ');
-      query += ` AND (title ILIKE $${paramIndex} OR artist ILIKE $${paramIndex} OR album ILIKE $${paramIndex})`;
-      params.push(`%${keywordSearch}%`);
-      paramIndex++;
-    }
-
-    // Order by energy level match and randomness
-    query += ' ORDER BY RANDOM()';
-    query += ` LIMIT $${paramIndex}`;
-    params.push(songCount);
-
-    const songsResult = await db.query(query, params);
-
-    // Create the playlist
-    const playlistName = name || `AI: ${trimmedPrompt.slice(0, 40)}`;
-    const description = analysis.description || `AI-generated playlist for: ${trimmedPrompt}`;
-
-    const playlistResult = await db.query(
-      `INSERT INTO playlists (user_id, name, description, is_ai_generated, prompt)
-       VALUES ($1, $2, $3, true, $4)
-       RETURNING *`,
-      [userId, playlistName, description, trimmedPrompt]
-    );
-
-    const playlist = playlistResult.rows[0];
-
-    // Add songs to playlist
-    for (let i = 0; i < songsResult.rows.length; i++) {
-      await db.query(
-        'INSERT INTO playlist_songs (playlist_id, song_id, position) VALUES ($1, $2, $3)',
-        [playlist.id, songsResult.rows[i].id, i + 1]
-      );
-    }
-
-    res.status(201).json({
-      message: 'AI playlist generated successfully',
-      playlist,
-      songs: songsResult.rows,
-      analysis: {
-        mood: analysis.mood,
-        genres: analysis.genres,
-        description: analysis.description
-      }
-    });
-  } catch (error) {
-    console.error('AI playlist generation error:', error);
-    res.status(500).json({ error: 'Failed to generate AI playlist' });
-  }
-};
-
-/**
  * Get personalized recommendations
  */
 const getRecommendations = async (req, res) => {
@@ -530,7 +413,6 @@ const getDailyMix = async (req, res) => {
 
 module.exports = {
   getStatus,
-  generatePlaylist,
   getRecommendations,
   detectMood,
   semanticSearch,
