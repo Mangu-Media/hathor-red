@@ -215,10 +215,40 @@ const leaveRoom = async (req, res) => {
       return res.status(400).json({ error: 'Invalid room ID' });
     }
 
+    const userId = req.user.userId;
+
+    // dose-4.1: before delete, check if leaver is host so we can hand off
+    // (HTTP leave previously only deleted the participant row; socket disconnect
+    // already handed off via handleHostHandoff).
+    const roomRow = await db.query(
+      'SELECT host_id FROM listening_rooms WHERE id = $1',
+      [id]
+    );
+    const wasHost =
+      roomRow.rows.length > 0 && Number(roomRow.rows[0].host_id) === Number(userId);
+
     await db.query(
       'DELETE FROM room_participants WHERE room_id = $1 AND user_id = $2',
-      [id, req.user.userId]
+      [id, userId]
     );
+
+    if (wasHost) {
+      // Pick earliest remaining participant as new host (same spirit as socket).
+      const next = await db.query(
+        `SELECT user_id FROM room_participants
+         WHERE room_id = $1 AND user_id <> $2
+         ORDER BY joined_at ASC LIMIT 1`,
+        [id, userId]
+      );
+      if (next.rows.length > 0) {
+        const newHostId = next.rows[0].user_id;
+        await db.query(
+          'UPDATE listening_rooms SET host_id = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+          [newHostId, id]
+        );
+      }
+      // If no remaining participants, leave host_id as-is (room empty).
+    }
 
     res.json({ message: 'Left room successfully' });
   } catch (error) {
