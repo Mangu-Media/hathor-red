@@ -1,6 +1,6 @@
 # WHAT_SHIPS — Hathor Red live capability snapshot
 
-Last updated: 2026-09-16 (dose-5.1: AI input length bars client-side).
+Last updated: 2026-09-16 (dose-5.2: AI client input bars in services/ai.js).
 
 ## Ships today
 
@@ -16,7 +16,8 @@ Last updated: 2026-09-16 (dose-5.1: AI input length bars client-side).
 - **dose-3.2**: `normalizeListParams` also bars `search` (trim; empty clears; reject non-string or length > 200) so catalog list queries never send unbounded or junk search strings to the ILIKE path.
 - **dose-4.1**: `leaveRoom` (HTTP) hands off host to earliest remaining participant when the leaver was host (matches socket disconnect handoff path).
 - **dose-4.2**: HTTP host handoff also emits `host-changed` to `room-{id}` sockets and updates in-memory `roomHosts` via `notifyHttpHostHandoff` (parity with socket-path handleHostHandoff).
-- **dose-5.1**: AI client inputs barred before POST/GET — `search` query trim + length ≤ 200; `detectMood` input ≤ 500; `chat` message ≤ 2000; `generateAIPlaylist` prompt ≤ 500 (reject oversize so fallback/OpenAI path never receives unbounded strings).
+- **dose-5.1**: AI client inputs barred before POST/GET in `musicService` — `search` query trim + length ≤ 200; `detectMood` input ≤ 500; `chat` message ≤ 2000; `generateAIPlaylist` prompt ≤ 500.
+- **dose-5.2**: Same length/type bars applied to `client/src/services/ai.js` (used by AIChat, AIRecommendations, AIPlaylistGenerator paths that import ai.js) so unbounded strings never reach `/ai/*` from either service module.
 
 ## Does not ship
 
@@ -31,10 +32,10 @@ Last updated: 2026-09-16 (dose-5.1: AI input length bars client-side).
 | 2 Account | Soft logout + profile path + client normalize (dose-2.96) |
 | 3 Home/playlists | Genre + search client bars (dose-3.1 / 3.2); routes/list/detail present |
 | 4 Rooms | Core + dose-4.1 HTTP leave host handoff + dose-4.2 host-changed emit on HTTP handoff |
-| 5 | Olympus flags as prior + dose-5.1 AI input length bars |
+| 5 | Olympus flags as prior + dose-5.1 / dose-5.2 AI input length bars (music.js + ai.js) |
 
 ## Next item
 
-Dose 5 Olympus: fallbacks when OpenAI/worker missing (UI empty states); remove any remaining dead nav items.
+Dose 5 Olympus: server-side prompt/message length bars on `/ai/*` controllers (parity with client); remove any remaining dead nav items if found.
 
 See also: [README.md](README.md), [BUGS.md](BUGS.md), [API.md](API.md).
