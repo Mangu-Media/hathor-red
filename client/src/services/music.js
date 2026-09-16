@@ -347,9 +347,13 @@ export const musicService = {
       headers: { 'Content-Type': 'multipart/form-data' },
     }).then(r => r.data);
   },
+  /**
+   * dose-1.94: reject invalid songId with 'Invalid song id' (was mislabeled
+   * 'Invalid duration'); duration bar unchanged.
+   */
   recordListening: (songId, duration) => {
     const sid = toPositiveId(songId);
-    if (sid == null) return Promise.reject(new Error('Invalid duration'));
+    if (sid == null) return Promise.reject(new Error('Invalid song id'));
     const dur = toListeningDuration(duration);
     if (dur == null) return Promise.reject(new Error('Invalid duration'));
     return api.post('/songs/record-listening', { songId: sid, duration: dur }).then(r => r.data);
