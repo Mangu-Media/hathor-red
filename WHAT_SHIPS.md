@@ -1,6 +1,6 @@
 # WHAT_SHIPS — Hathor Red live capability snapshot
 
-Last updated: 2026-09-16 (dose-5.2: AI client input bars in services/ai.js).
+Last updated: 2026-09-16 (dose-5.3: server AI controller length bars).
 
 ## Ships today
 
@@ -18,6 +18,7 @@ Last updated: 2026-09-16 (dose-5.2: AI client input bars in services/ai.js).
 - **dose-4.2**: HTTP host handoff also emits `host-changed` to `room-{id}` sockets and updates in-memory `roomHosts` via `notifyHttpHostHandoff` (parity with socket-path handleHostHandoff).
 - **dose-5.1**: AI client inputs barred before POST/GET in `musicService` — `search` query trim + length ≤ 200; `detectMood` input ≤ 500; `chat` message ≤ 2000; `generateAIPlaylist` prompt ≤ 500.
 - **dose-5.2**: Same length/type bars applied to `client/src/services/ai.js` (used by AIChat, AIRecommendations, AIPlaylistGenerator paths that import ai.js) so unbounded strings never reach `/ai/*` from either service module.
+- **dose-5.3**: Server `aiController` bars match client: `generatePlaylist` prompt ≤ 500; `detectMood` input ≤ 500; `semanticSearch` query ≤ 200; `chat` message ≤ 2000 (trim + type check; 400 on oversize/empty).
 
 ## Does not ship
 
@@ -32,10 +33,10 @@ Last updated: 2026-09-16 (dose-5.2: AI client input bars in services/ai.js).
 | 2 Account | Soft logout + profile path + client normalize (dose-2.96) |
 | 3 Home/playlists | Genre + search client bars (dose-3.1 / 3.2); routes/list/detail present |
 | 4 Rooms | Core + dose-4.1 HTTP leave host handoff + dose-4.2 host-changed emit on HTTP handoff |
-| 5 | Olympus flags as prior + dose-5.1 / dose-5.2 AI input length bars (music.js + ai.js) |
+| 5 | Olympus flags + dose-5.1/5.2 client AI bars + dose-5.3 server AI controller length bars |
 
 ## Next item
 
-Dose 5 Olympus: server-side prompt/message length bars on `/ai/*` controllers (parity with client); remove any remaining dead nav items if found.
+Dose 5 Olympus: remove any remaining dead nav items if found; confirm OpenAI/worker missing fallbacks are honest in UI.
 
 See also: [README.md](README.md), [BUGS.md](BUGS.md), [API.md](API.md).

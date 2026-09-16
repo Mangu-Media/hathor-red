@@ -13,6 +13,11 @@ const AI_DEFAULT_LIMIT = 20;
 const AI_SIMILAR_DEFAULT_LIMIT = 10;
 const AI_MAX_LIMIT = 50;
 const AI_PLAYLIST_DEFAULT_COUNT = 10;
+// dose-5.3: server-side length bars matching client (dose-5.1 / dose-5.2)
+const AI_PROMPT_MAX = 500;
+const AI_MOOD_INPUT_MAX = 500;
+const AI_SEARCH_QUERY_MAX = 200;
+const AI_CHAT_MESSAGE_MAX = 2000;
 
 /**
  * Parse AI limit: finite positive integer when present, else default.
@@ -48,8 +53,13 @@ const generatePlaylist = async (req, res) => {
     const { prompt, name } = req.body;
     const { userId } = req.user;
 
-    if (!prompt) {
+    // dose-5.3: required non-empty string, max AI_PROMPT_MAX (parity with client)
+    if (prompt == null || typeof prompt !== 'string') {
       return res.status(400).json({ error: 'Prompt is required' });
+    }
+    const trimmedPrompt = prompt.trim();
+    if (!trimmedPrompt || trimmedPrompt.length > AI_PROMPT_MAX) {
+      return res.status(400).json({ error: `Prompt is required (max ${AI_PROMPT_MAX} chars)` });
     }
 
     // dose-1.55: finite positive-int bar on body songCount (default 10, ceiling 50)
@@ -80,7 +90,7 @@ const generatePlaylist = async (req, res) => {
     };
 
     // Analyze the prompt using AI
-    const analysis = await colabAIService.analyzePlaylistPrompt(prompt, context);
+    const analysis = await colabAIService.analyzePlaylistPrompt(trimmedPrompt, context);
 
     // Build query based on AI analysis
     let query = 'SELECT * FROM songs WHERE 1=1';
@@ -116,14 +126,14 @@ const generatePlaylist = async (req, res) => {
     const songsResult = await db.query(query, params);
 
     // Create the playlist
-    const playlistName = name || `AI: ${prompt.slice(0, 40)}`;
-    const description = analysis.description || `AI-generated playlist for: ${prompt}`;
+    const playlistName = name || `AI: ${trimmedPrompt.slice(0, 40)}`;
+    const description = analysis.description || `AI-generated playlist for: ${trimmedPrompt}`;
 
     const playlistResult = await db.query(
       `INSERT INTO playlists (user_id, name, description, is_ai_generated, prompt)
        VALUES ($1, $2, $3, true, $4)
        RETURNING *`,
-      [userId, playlistName, description, prompt]
+      [userId, playlistName, description, trimmedPrompt]
     );
 
     const playlist = playlistResult.rows[0];
@@ -253,11 +263,16 @@ const detectMood = async (req, res) => {
   try {
     const { input, context = {} } = req.body;
 
-    if (!input) {
+    // dose-5.3: required non-empty string, max AI_MOOD_INPUT_MAX
+    if (input == null || typeof input !== 'string') {
       return res.status(400).json({ error: 'Input is required' });
     }
+    const trimmedInput = input.trim();
+    if (!trimmedInput || trimmedInput.length > AI_MOOD_INPUT_MAX) {
+      return res.status(400).json({ error: `Input is required (max ${AI_MOOD_INPUT_MAX} chars)` });
+    }
 
-    const moodAnalysis = await colabAIService.detectMood(input, context);
+    const moodAnalysis = await colabAIService.detectMood(trimmedInput, context);
 
     // Get songs matching the detected mood
     const genreQuery = moodAnalysis.suggestedGenres && moodAnalysis.suggestedGenres.length > 0
@@ -286,8 +301,13 @@ const semanticSearch = async (req, res) => {
   try {
     const { query: searchQuery } = req.query;
 
-    if (!searchQuery) {
+    // dose-5.3: required non-empty string, max AI_SEARCH_QUERY_MAX
+    if (searchQuery == null || typeof searchQuery !== 'string') {
       return res.status(400).json({ error: 'Search query is required' });
+    }
+    const trimmedQuery = searchQuery.trim();
+    if (!trimmedQuery || trimmedQuery.length > AI_SEARCH_QUERY_MAX) {
+      return res.status(400).json({ error: `Search query is required (max ${AI_SEARCH_QUERY_MAX} chars)` });
     }
 
     // dose-1.55: finite positive-int bar on query limit (default 20, ceiling 50)
@@ -297,7 +317,7 @@ const semanticSearch = async (req, res) => {
     }
 
     // Get AI-enhanced search parameters
-    const searchParams = await colabAIService.semanticSearch(searchQuery);
+    const searchParams = await colabAIService.semanticSearch(trimmedQuery);
 
     // Build database query
     let query = 'SELECT * FROM songs WHERE 1=1';
@@ -346,8 +366,13 @@ const chat = async (req, res) => {
     const { message, conversationHistory = [] } = req.body;
     const { userId } = req.user;
 
-    if (!message) {
+    // dose-5.3: required non-empty string, max AI_CHAT_MESSAGE_MAX
+    if (message == null || typeof message !== 'string') {
       return res.status(400).json({ error: 'Message is required' });
+    }
+    const trimmedMessage = message.trim();
+    if (!trimmedMessage || trimmedMessage.length > AI_CHAT_MESSAGE_MAX) {
+      return res.status(400).json({ error: `Message is required (max ${AI_CHAT_MESSAGE_MAX} chars)` });
     }
 
     // Get user context
@@ -367,7 +392,7 @@ const chat = async (req, res) => {
       currentPage: req.body.currentPage || 'home'
     };
 
-    const response = await colabAIService.chat(message, conversationHistory, context);
+    const response = await colabAIService.chat(trimmedMessage, conversationHistory, context);
 
     // Process any actions
     let actionResults = null;
