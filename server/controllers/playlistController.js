@@ -132,10 +132,18 @@ const addSongToPlaylist = async (req, res) => {
 
 const generateAIPlaylist = async (req, res) => {
   try {
-    const { prompt, name } = req.body;
+    const { prompt: rawPrompt, name } = req.body;
 
-    if (!prompt) {
+    // dose-5.8: defense-in-depth prompt bar (middleware aiPlaylistValidation already
+    // enforces trim + notEmpty + max 500). Reject non-string / empty / oversize here
+    // so a bypassed or mis-ordered middleware never feeds unbounded text into
+    // colabAIService.analyzePlaylistPrompt or the moodMap keyword path.
+    if (rawPrompt == null || typeof rawPrompt !== 'string') {
       return res.status(400).json({ error: 'Prompt is required' });
+    }
+    const prompt = rawPrompt.trim();
+    if (!prompt || prompt.length > 500) {
+      return res.status(400).json({ error: 'Prompt is required (max 500 chars)' });
     }
 
     // dose-1.57: finite positive-int bar on body songCount (default DEFAULT_AI_PLAYLIST_SIZE,

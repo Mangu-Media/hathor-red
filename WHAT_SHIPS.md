@@ -1,6 +1,6 @@
 # WHAT_SHIPS — Hathor Red live capability snapshot
 
-Last updated: 2026-09-16 (dose-5.7: retire dead aiController.generatePlaylist).
+Last updated: 2026-09-16 (dose-5.8: harden generateAIPlaylist prompt length in controller body).
 
 ## Ships today
 
@@ -24,6 +24,7 @@ Last updated: 2026-09-16 (dose-5.7: retire dead aiController.generatePlaylist).
 - **dose-5.5**: `client/src/services/ai.js` `generateAIPlaylist` POSTs to `/playlists/generate-ai` (same as musicService + playlists router); was `/ai/playlist/generate`. Remaining client playlist mutations already matched server routes.
 - **dose-5.6**: Server `POST /ai/playlist/generate` is now a legacy alias of `playlistController.generateAIPlaylist` (same validation + stronger mood fallback as `/playlists/generate-ai`). Preferred client path remains `/playlists/generate-ai`; dual handlers no longer diverge.
 - **dose-5.7**: Removed dead `aiController.generatePlaylist` (no longer routed after dose-5.6; preferred path is `playlistController.generateAIPlaylist` via `/playlists/generate-ai` and the `/ai/playlist/generate` alias). Export list cleaned.
+- **dose-5.8**: `playlistController.generateAIPlaylist` body now type-checks + trims + bars prompt length ≤ 500 (defense-in-depth; middleware `aiPlaylistValidation` already enforces). Non-string / empty / oversize → 400 before AI or moodMap path.
 
 ## Does not ship
 
@@ -38,10 +39,10 @@ Last updated: 2026-09-16 (dose-5.7: retire dead aiController.generatePlaylist).
 | 2 Account | Soft logout + profile path + client normalize (dose-2.96) |
 | 3 Home/playlists | Genre + search client bars (dose-3.1 / 3.2); routes/list/detail present |
 | 4 Rooms | Core + dose-4.1 HTTP leave host handoff + dose-4.2 host-changed emit on HTTP handoff |
-| 5 | Olympus flags + dose-5.1–5.7 (client/server AI bars, path align, shared generateAIPlaylist, dead code retired) |
+| 5 | Olympus flags + dose-5.1–5.8 (client/server AI bars, path align, shared generateAIPlaylist, dead code retired, controller prompt bar) |
 
 ## Next item
 
-Dose 5 Olympus polish complete for dead-code path; remaining optional: stronger prompt length defense inside `playlistController.generateAIPlaylist` body (middleware already enforces via `aiPlaylistValidation`).
+Dose 5 Olympus polish: optional follow-ups only (e.g. name length bar parity in controller body if name present). No Dose 6+.
 
 See also: [README.md](README.md), [BUGS.md](BUGS.md), [API.md](API.md).
