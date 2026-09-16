@@ -1,6 +1,6 @@
 # WHAT_SHIPS — Hathor Red live capability snapshot
 
-Last updated: 2026-09-16 (dose-5.4: fix AI playlist client path).
+Last updated: 2026-09-16 (dose-5.5: align ai.js generateAIPlaylist path).
 
 ## Ships today
 
@@ -20,6 +20,7 @@ Last updated: 2026-09-16 (dose-5.4: fix AI playlist client path).
 - **dose-5.2**: Same length/type bars applied to `client/src/services/ai.js` (used by AIChat, AIRecommendations, AIPlaylistGenerator paths that import ai.js) so unbounded strings never reach `/ai/*` from either service module.
 - **dose-5.3**: Server `aiController` bars match client: `generatePlaylist` prompt ≤ 500; `detectMood` input ≤ 500; `semanticSearch` query ≤ 200; `chat` message ≤ 2000 (trim + type check; 400 on oversize/empty).
 - **dose-5.4**: `musicService.generateAIPlaylist` POSTs to `/playlists/generate-ai` (matches `server/routes/playlists.js`); was `/playlists/ai-generate` (404). Also aligned `addToPlaylist` to `/playlists/add-song` with `{ playlistId, songId }` body.
+- **dose-5.5**: `client/src/services/ai.js` `generateAIPlaylist` POSTs to `/playlists/generate-ai` (same as musicService + playlists router); was `/ai/playlist/generate`. Remaining client playlist mutations already matched server routes.
 
 ## Does not ship
 
@@ -34,10 +35,10 @@ Last updated: 2026-09-16 (dose-5.4: fix AI playlist client path).
 | 2 Account | Soft logout + profile path + client normalize (dose-2.96) |
 | 3 Home/playlists | Genre + search client bars (dose-3.1 / 3.2); routes/list/detail present |
 | 4 Rooms | Core + dose-4.1 HTTP leave host handoff + dose-4.2 host-changed emit on HTTP handoff |
-| 5 | Olympus flags + dose-5.1/5.2 client AI bars + dose-5.3 server AI controller length bars + dose-5.4 AI playlist path fix |
+| 5 | Olympus flags + dose-5.1/5.2 client AI bars + dose-5.3 server AI controller length bars + dose-5.4 AI playlist path fix + dose-5.5 ai.js path align |
 
 ## Next item
 
-Dose 5 Olympus: confirm remaining client playlist mutations match server routes; OpenAI/worker missing fallbacks already honest in UI.
+Dose 5 Olympus: OpenAI/worker missing fallbacks already honest in UI; remaining low-priority polish (e.g. dual AI generate endpoints on server can stay or one can be deprecated later).
 
 See also: [README.md](README.md), [BUGS.md](BUGS.md), [API.md](API.md).

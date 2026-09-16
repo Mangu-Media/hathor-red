@@ -5,6 +5,8 @@
  * dose-5.2: client-side length/type bars matching musicService (dose-5.1)
  * so AIChat / AIRecommendations never POST/GET unbounded strings when
  * callers use this module instead of musicService.
+ * dose-5.5: generateAIPlaylist path aligned to server/routes/playlists.js
+ * POST /generate-ai (same as musicService); was /ai/playlist/generate.
  */
 
 import api from './api';
@@ -57,7 +59,8 @@ export const generateAIPlaylist = async (prompt, name = null, songCount = 10) =>
     if (n == null) return Promise.reject(new Error('Invalid songCount'));
     body.songCount = Math.min(n, 50);
   }
-  const response = await api.post('/ai/playlist/generate', body);
+  // dose-5.5: match musicService + server/routes/playlists.js POST /generate-ai
+  const response = await api.post('/playlists/generate-ai', body);
   return response.data;
 };
 
