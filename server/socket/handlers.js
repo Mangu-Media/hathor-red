@@ -11,6 +11,9 @@ const activeUsers = new Map();
 const roomHosts = new Map();
 const roomPresence = new Map();
 
+/** Set in setupSocketHandlers so HTTP leave can emit host-changed (dose-4.2). */
+let ioRef = null;
+
 const ROOM_SELECT = `SELECT *,
   (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - updated_at)) * 1000)::bigint AS elapsed_ms
   FROM listening_rooms WHERE id = $1`;
@@ -60,6 +63,27 @@ function getRoomPresenceRoster(roomId) {
   const id = toPositiveInt(roomId);
   if (id == null) return [];
   return presenceRoster(id);
+}
+
+/**
+ * dose-4.2: after HTTP leaveRoom hands off host in DB, notify remaining
+ * sockets in the room (same payload as socket-path handleHostHandoff) and
+ * keep in-memory roomHosts in sync so room-control auth stays correct.
+ */
+function notifyHttpHostHandoff(roomId, newHostId) {
+  const id = toPositiveInt(roomId);
+  const hostId = toPositiveInt(newHostId);
+  if (id == null || hostId == null) return;
+  roomHosts.set(id, hostId);
+  if (!ioRef) return;
+  const newHost = presenceRoster(id).find((m) => m.userId === hostId);
+  ioRef.to(`room-${id}`).emit('host-changed', {
+    roomId: id,
+    newHostId: hostId,
+    newHostUsername: newHost ? newHost.username : null,
+    timestamp: Date.now(),
+  });
+  logger.info({ action: 'host_handoff_http', roomId: id, to: hostId });
 }
 
 function allowEvent(socket, eventKey, max) {
@@ -145,6 +169,8 @@ function sanitizeChatMessage(message) {
 }
 
 const setupSocketHandlers = (io) => {
+  ioRef = io;
+
   io.use((socket, next) => {
     const token = socket.handshake.auth?.token;
     if (!token) return next(new Error('Authentication required'));
@@ -455,8 +481,10 @@ const setupSocketHandlers = (io) => {
 module.exports = setupSocketHandlers;
 module.exports.getRoomPresenceCounts = getRoomPresenceCounts;
 module.exports.getRoomPresenceRoster = getRoomPresenceRoster;
+module.exports.notifyHttpHostHandoff = notifyHttpHostHandoff;
 module.exports.resetStateForTests = () => {
   activeUsers.clear();
   roomHosts.clear();
   roomPresence.clear();
+  ioRef = null;
 };

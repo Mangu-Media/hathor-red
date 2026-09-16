@@ -246,6 +246,15 @@ const leaveRoom = async (req, res) => {
           'UPDATE listening_rooms SET host_id = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
           [newHostId, id]
         );
+        // dose-4.2: emit host-changed to room sockets + sync roomHosts cache
+        // (HTTP path previously only updated DB; clients stayed on old host).
+        try {
+          if (typeof setupSocketHandlers.notifyHttpHostHandoff === 'function') {
+            setupSocketHandlers.notifyHttpHostHandoff(id, newHostId);
+          }
+        } catch (emitErr) {
+          console.error('host-changed emit after HTTP leave failed:', emitErr.message);
+        }
       }
       // If no remaining participants, leave host_id as-is (room empty).
     }
