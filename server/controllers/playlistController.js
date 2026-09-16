@@ -132,7 +132,7 @@ const addSongToPlaylist = async (req, res) => {
 
 const generateAIPlaylist = async (req, res) => {
   try {
-    const { prompt: rawPrompt, name } = req.body;
+    const { prompt: rawPrompt, name: rawName } = req.body;
 
     // dose-5.8: defense-in-depth prompt bar (middleware aiPlaylistValidation already
     // enforces trim + notEmpty + max 500). Reject non-string / empty / oversize here
@@ -144,6 +144,21 @@ const generateAIPlaylist = async (req, res) => {
     const prompt = rawPrompt.trim();
     if (!prompt || prompt.length > 500) {
       return res.status(400).json({ error: 'Prompt is required (max 500 chars)' });
+    }
+
+    // dose-5.9: defense-in-depth name bar (middleware already optional max 100).
+    // If present, must be string; trim; empty → treat as absent; oversize → 400.
+    // Matches client normalizeGenerateAIPlaylist slice(0, 100) + createPlaylist bar.
+    let name = null;
+    if (rawName != null && rawName !== '') {
+      if (typeof rawName !== 'string') {
+        return res.status(400).json({ error: 'Invalid playlist name' });
+      }
+      const trimmedName = rawName.trim();
+      if (trimmedName.length > 100) {
+        return res.status(400).json({ error: 'Playlist name max 100 chars' });
+      }
+      if (trimmedName) name = trimmedName;
     }
 
     // dose-1.57: finite positive-int bar on body songCount (default DEFAULT_AI_PLAYLIST_SIZE,
