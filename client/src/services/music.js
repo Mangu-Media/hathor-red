@@ -369,7 +369,7 @@ export const musicService = {
     const pid = toPositiveId(playlistId);
     const sid = toPositiveId(songId);
     if (pid == null || sid == null) return Promise.reject(new Error('Invalid playlist or song id'));
-    return api.post(`/playlists/${pid}/songs`, { songId: sid }).then(r => r.data);
+    return api.post('/playlists/add-song', { playlistId: pid, songId: sid }).then(r => r.data);
   },
   removeFromPlaylist: (playlistId, songId) => {
     const pid = toPositiveId(playlistId);
@@ -389,10 +389,14 @@ export const musicService = {
     if (pid == null) return Promise.reject(new Error('Invalid playlist id'));
     return api.delete(`/playlists/${pid}`).then(r => r.data);
   },
+  /**
+   * dose-5.4: path must match server/routes/playlists.js POST /generate-ai
+   * (was /playlists/ai-generate — 404). Same body as before.
+   */
   generateAIPlaylist: (prompt, name, songCount) => {
     const normalized = normalizeGenerateAIPlaylist(prompt, name, songCount);
     if (normalized === null) return Promise.reject(new Error('Invalid generateAIPlaylist payload'));
-    return api.post('/playlists/ai-generate', normalized).then(r => r.data);
+    return api.post('/playlists/generate-ai', normalized).then(r => r.data);
   },
   getPlaybackState: () =>
     api.get('/playback/state').then((r) => {
