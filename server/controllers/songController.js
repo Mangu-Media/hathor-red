@@ -200,6 +200,11 @@ const uploadSong = async (req, res) => {
       return res.status(400).json({ error: 'Title, artist, and duration are required' });
     }
 
+    // dose-1.95: length bars matching client normalizeUploadFormData (title/artist ≤255).
+    if (titleTrim.length > 255 || artistTrim.length > 255) {
+      return res.status(400).json({ error: 'Title or artist too long' });
+    }
+
     // dose-1.49: same finite positive-int / bounded bar as recordListening position
     // (reject NaN/Infinity/0/negative/out-of-range before DB insert).
     const durationSec = Number(duration);
@@ -227,10 +232,19 @@ const uploadSong = async (req, res) => {
       }
     }
 
-    const albumVal =
-      album != null && typeof album === 'string' && album.trim() !== ''
-        ? album.trim()
-        : null;
+    // dose-1.95: album length bar matching client slice(0, 255); non-string/oversize → 400;
+    // empty after trim treated as absent (null).
+    let albumVal = null;
+    if (album != null && album !== '') {
+      if (typeof album !== 'string') {
+        return res.status(400).json({ error: 'Invalid album' });
+      }
+      const albumTrim = album.trim();
+      if (albumTrim.length > 255) {
+        return res.status(400).json({ error: 'Album too long' });
+      }
+      if (albumTrim) albumVal = albumTrim;
+    }
 
     const filePath = `/uploads/${req.file.filename}`;
 
