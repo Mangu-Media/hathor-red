@@ -1,6 +1,6 @@
 # WHAT_SHIPS — Hathor Red live capability snapshot
 
-Last updated: 2026-09-16 (dose-5.10: bar createPlaylist name and description in controller body).
+Last updated: 2026-09-16 (dose-3.3: bar getSongs search length on server).
 
 ## Ships today
 
@@ -15,6 +15,7 @@ Last updated: 2026-09-16 (dose-5.10: bar createPlaylist name and description in 
 - **dose-2.96**: `authService.updateProfile` normalizes client-side (required non-empty trimmed displayName ≤100 when present; avatarUrl empty-to-clear or valid http(s) URL) before PUT so Settings never posts junk the server would 400.
 - **dose-3.1**: `musicService.getSongs` normalizes `genre` against the same ALLOWED_GENRES list as the server (case-insensitive resolve to canonical name; reject unknown) inside `normalizeListParams` so Home genre filter never sends an invalid query the API would 400.
 - **dose-3.2**: `normalizeListParams` also bars `search` (trim; empty clears; reject non-string or length > 200) so catalog list queries never send unbounded or junk search strings to the ILIKE path.
+- **dose-3.3**: Server `songController.getSongs` now type-checks + trims + bars `search` ≤ 200 (parity with client dose-3.2). Non-string / oversize → 400 before ILIKE; empty after trim treated as absent.
 - **dose-4.1**: `leaveRoom` (HTTP) hands off host to earliest remaining participant when the leaver was host (matches socket disconnect handoff path).
 - **dose-4.2**: HTTP host handoff also emits `host-changed` to `room-{id}` sockets and updates in-memory `roomHosts` via `notifyHttpHostHandoff` (parity with socket-path handleHostHandoff).
 - **dose-5.1**: AI client inputs barred before POST/GET in `musicService` — `search` query trim + length ≤ 200; `detectMood` input ≤ 500; `chat` message ≤ 2000; `generateAIPlaylist` prompt ≤ 500.
@@ -39,12 +40,12 @@ Last updated: 2026-09-16 (dose-5.10: bar createPlaylist name and description in 
 | 0 Truth | Done |
 | 1 Playback | Core through dose-1.94; recordListening songId error label |
 | 2 Account | Soft logout + profile path + client normalize (dose-2.96) |
-| 3 Home/playlists | Genre + search client bars (dose-3.1 / 3.2); routes/list/detail present |
+| 3 Home/playlists | Genre + search client bars (dose-3.1 / 3.2) + server search bar (dose-3.3); routes/list/detail present |
 | 4 Rooms | Core + dose-4.1 HTTP leave host handoff + dose-4.2 host-changed emit on HTTP handoff |
 | 5 | Olympus flags + dose-5.1–5.10 (client/server AI bars, path align, shared generateAIPlaylist, dead code retired, controller prompt + name bars, createPlaylist name/description bars) |
 
 ## Next item
 
-Dose 5 Olympus polish complete for current bars. No further thin controller bars identified. No Dose 6+.
+Dose 3 search parity complete (client + server). No further thin controller bars identified for current doses. No Dose 6+.
 
 See also: [README.md](README.md), [BUGS.md](BUGS.md), [API.md](API.md).

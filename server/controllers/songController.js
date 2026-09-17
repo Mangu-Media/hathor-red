@@ -48,7 +48,7 @@ function parsePageOffset(raw) {
 
 const getSongs = async (req, res) => {
   try {
-    const { genre: genreRaw, search, limit, offset } = req.query;
+    const { genre: genreRaw, search: searchRaw, limit, offset } = req.query;
 
     // dose-1.52: same finite-int bar as privacy audit limit / stream ids
     // (reject NaN/0/negative/non-integer when limit/offset are present).
@@ -66,6 +66,25 @@ const getSongs = async (req, res) => {
       genre = resolveAllowedGenre(genreRaw);
       if (!genre) {
         return res.status(400).json({ error: 'Invalid genre', allowed: ALLOWED_GENRES });
+      }
+    }
+
+    // dose-3.3: defense-in-depth search bar matching client normalizeListParams
+    // (dose-3.2). Trim; empty clears; reject non-string or length > 200 so
+    // ILIKE path never receives unbounded or junk patterns even if a client
+    // bypasses the SPA guard.
+    let search = null;
+    if (searchRaw != null && searchRaw !== '') {
+      if (typeof searchRaw !== 'string') {
+        return res.status(400).json({ error: 'Invalid search' });
+      }
+      const trimmed = searchRaw.trim();
+      if (!trimmed) {
+        search = null;
+      } else if (trimmed.length > 200) {
+        return res.status(400).json({ error: 'Invalid search' });
+      } else {
+        search = trimmed;
       }
     }
 
