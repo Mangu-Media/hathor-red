@@ -118,10 +118,18 @@ const getRoomById = async (req, res) => {
 
 const createRoom = async (req, res) => {
   try {
-    const { name, isPublic, maxListeners } = req.body;
+    const { name: rawName, isPublic, maxListeners } = req.body;
 
-    if (!name) {
+    // dose-5.11: defense-in-depth name bar (middleware roomValidation already
+    // enforces trim + notEmpty + max 100). Reject non-string / empty / oversize
+    // here so a bypassed or mis-ordered middleware never inserts junk.
+    // Parity with createPlaylist / generateAIPlaylist name bars.
+    if (rawName == null || typeof rawName !== 'string') {
       return res.status(400).json({ error: 'Room name is required' });
+    }
+    const name = rawName.trim();
+    if (!name || name.length > 100) {
+      return res.status(400).json({ error: 'Room name is required (max 100 chars)' });
     }
 
     // dose-1.57: finite positive-int bar on body maxListeners (default DEFAULT_ROOM_MAX_LISTENERS,

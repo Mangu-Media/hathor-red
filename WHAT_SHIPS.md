@@ -1,6 +1,6 @@
 # WHAT_SHIPS — Hathor Red live capability snapshot
 
-Last updated: 2026-09-16 (dose-1.95: bar upload album/title/artist length on server).
+Last updated: 2026-09-16 (dose-5.11: bar createRoom name type/trim/length on server).
 
 ## Ships today
 
@@ -29,6 +29,7 @@ Last updated: 2026-09-16 (dose-1.95: bar upload album/title/artist length on ser
 - **dose-5.8**: `playlistController.generateAIPlaylist` body now type-checks + trims + bars prompt length ≤ 500 (defense-in-depth; middleware `aiPlaylistValidation` already enforces). Non-string / empty / oversize → 400 before AI or moodMap path.
 - **dose-5.9**: `playlistController.generateAIPlaylist` body now type-checks + trims + bars optional `name` ≤ 100 (parity with middleware + client `normalizeGenerateAIPlaylist` + createPlaylist). Non-string / oversize → 400; empty after trim treated as absent.
 - **dose-5.10**: `playlistController.createPlaylist` body now type-checks + trims + bars required `name` ≤ 100 and optional `description` ≤ 500 (defense-in-depth; middleware `playlistValidation` already enforces). Non-string / empty / oversize → 400 before INSERT.
+- **dose-5.11**: `roomController.createRoom` body now type-checks + trims + bars required `name` ≤ 100 (defense-in-depth; middleware `roomValidation` already enforces). Non-string / empty / oversize → 400 before INSERT. Parity with createPlaylist name bar.
 
 ## Does not ship
 
@@ -43,10 +44,10 @@ Last updated: 2026-09-16 (dose-1.95: bar upload album/title/artist length on ser
 | 2 Account | Soft logout + profile path + client normalize (dose-2.96) |
 | 3 Home/playlists | Genre + search client bars (dose-3.1 / 3.2) + server search bar (dose-3.3); routes/list/detail present |
 | 4 Rooms | Core + dose-4.1 HTTP leave host handoff + dose-4.2 host-changed emit on HTTP handoff |
-| 5 | Olympus flags + dose-5.1–5.10 (client/server AI bars, path align, shared generateAIPlaylist, dead code retired, controller prompt + name bars, createPlaylist name/description bars) |
+| 5 | Olympus flags + dose-5.1–5.11 (client/server AI bars, path align, shared generateAIPlaylist, dead code retired, controller prompt + name bars, createPlaylist name/description bars, createRoom name bar) |
 
 ## Next item
 
-Dose 1 upload field length parity complete (client + server). Prefer next thin bar on remaining playlist/room mutations if any; no Dose 6+.
+Dose 5.11 createRoom name bar complete. Prefer next thin bar on remaining mutations (e.g. client-side room create normalize if missing) or any residual playlist/room path; no Dose 6+.
 
 See also: [README.md](README.md), [BUGS.md](BUGS.md), [API.md](API.md).
